@@ -23,7 +23,7 @@ class MigrationHelper
 
     public static function makeConfiguration($name,array $settings, Connection $conn,OutputInterface $output = null)
     {
-        $conf = new Configuration($conn,static::getOutputWriter($output));
+        $conf = new Configuration($conn);
         $conf->setMigrationsTableName($settings['table_name']);
         $conf->setMigrationsNamespace($settings['namespace']);
 

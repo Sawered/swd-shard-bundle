@@ -32,7 +32,13 @@ trait ShardCommandExecuteTrait
             $conn,
             $output
         );
-        
+
+        $config->getOutputWriter()->setCallback(
+            static function (string $message) use ($output) : void {
+                $output->writeln($message);
+            }
+        );
+
         return $config;
     }
 }
