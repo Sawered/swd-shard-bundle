@@ -9,5 +9,9 @@
             "email": "sawered@gmail.com"
         }
     ],
-    "require": {}
+    "require": {
+        "doctrine/dbal": "^2.5",
+        "doctrine/migrations": "@dev",
+        "doctrine/doctrine-migrations-bundle": "dev-master"
+    }
 }
