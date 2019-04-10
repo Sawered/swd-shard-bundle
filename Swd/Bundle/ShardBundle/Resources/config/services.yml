@@ -1,0 +1,6 @@
+parameters:
+    swd_shard.migrations: ~
+services:
+#    swd_shard.example:
+#        class: Swd\Bundle\DoctrineShardBundle\Example
+#        arguments: ["@service_id", "plain_value", "%parameter%"]

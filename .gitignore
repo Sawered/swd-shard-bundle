@@ -1,0 +1,4 @@
+*.sw[opa]
+!.gitignore
+vendor
+.idea/
