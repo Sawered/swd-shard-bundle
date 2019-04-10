@@ -1,0 +1,13 @@
+{
+    "name": "swd/shard-bundle",
+    "description": "Doctrine migrations for shards",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Sawered",
+            "email": "sawered@gmail.com"
+        }
+    ],
+    "require": {}
+}
