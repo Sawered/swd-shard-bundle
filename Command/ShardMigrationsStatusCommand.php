@@ -1,13 +1,14 @@
 <?php
 namespace Swd\Bundle\ShardBundle\Command;
-use Doctrine\DBAL\Migrations\Tools\Console\Command\StatusCommand;
+use Doctrine\Migrations\Tools\Console\Command\StatusCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 
 class ShardMigrationsStatusCommand  extends StatusCommand
 {
     use ShardCommandExecuteTrait;
-    protected function configure()
+    
+    protected function configure(): void
     {
         parent::configure();
 

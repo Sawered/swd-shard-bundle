@@ -1,6 +1,6 @@
 <?php
 namespace Swd\Bundle\ShardBundle\Command;
-use Doctrine\DBAL\Migrations\Tools\Console\Command\MigrateCommand;
+use Doctrine\Migrations\Tools\Console\Command\MigrateCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 
@@ -8,7 +8,7 @@ class ShardMigrationsMigrateCommand extends MigrateCommand
 {
     use ShardCommandExecuteTrait;
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->addArgument('type',InputArgument::REQUIRED,'set type of configured migration')
         ;

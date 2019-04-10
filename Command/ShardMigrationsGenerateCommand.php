@@ -1,6 +1,6 @@
 <?php
 namespace Swd\Bundle\ShardBundle\Command;
-use Doctrine\DBAL\Migrations\Tools\Console\Command\GenerateCommand;
+use Doctrine\Migrations\Tools\Console\Command\GenerateCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 
@@ -8,7 +8,7 @@ class ShardMigrationsGenerateCommand extends GenerateCommand
 {
     use ShardCommandExecuteTrait;
 
-    protected function configure()
+    protected function configure(): void
     {
         parent::configure();
 

@@ -6,6 +6,7 @@ namespace Swd\Bundle\ShardBundle\Command;
 
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Doctrine\Migrations\Configuration\Configuration;
 
 /**
  * Trait ShardCommandExecuteTrait
@@ -14,8 +15,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 trait ShardCommandExecuteTrait
 {
 
-    public function execute(InputInterface $input, OutputInterface $output)
-    {
+    protected function getMigrationConfiguration(
+        InputInterface $input,
+        OutputInterface $output
+    ) : Configuration {
+
         $container = $this->getApplication()->getKernel()->getContainer();
         $type = $input->getArgument('type');
         $settings = MigrationHelper::getMigrationTypeSettings($type,$container);
@@ -28,9 +32,7 @@ trait ShardCommandExecuteTrait
             $conn,
             $output
         );
-
-        $this->setMigrationConfiguration($config);
-        parent::execute($input, $output);
+        
+        return $config;
     }
-
 }
