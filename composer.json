@@ -9,6 +9,9 @@
             "email": "sawered@gmail.com"
         }
     ],
+     "autoload": {
+        "psr-4": { "Swd\\Bundle\\ShardBundle": "" }
+    },
     "require": {
         "doctrine/dbal": "^2.5",
         "doctrine/migrations": "@dev",
