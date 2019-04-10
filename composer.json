@@ -10,7 +10,7 @@
         }
     ],
      "autoload": {
-        "psr-4": { "Swd\\Bundle\\ShardBundle": "" }
+        "psr-4": { "Swd\\Bundle\\ShardBundle\\": "" }
     },
     "require": {
         "doctrine/dbal": "^2.5",
