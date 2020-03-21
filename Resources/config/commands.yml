@@ -1,0 +1,24 @@
+services:
+  Swd\Bundle\ShardBundle\Command\ShardMigrationsExecuteCommand:
+    arguments: ~
+    tags:
+      - { name: 'console.command' }
+      - { name: 'swd_shard.migration_command'}
+
+  Swd\Bundle\ShardBundle\Command\ShardMigrationsStatusCommand:
+    arguments: ~
+    tags:
+      - { name: 'console.command' }
+      - { name: 'swd_shard.migration_command'}
+
+  Swd\Bundle\ShardBundle\Command\ShardMigrationsGenerateCommand:
+    arguments: ~
+    tags:
+      - { name: 'console.command' }
+      - { name: 'swd_shard.migration_command'}
+
+  Swd\Bundle\ShardBundle\Command\ShardMigrationsMigrateCommand:
+    arguments: ~
+    tags:
+      - { name: 'console.command' }
+      - { name: 'swd_shard.migration_command'}
