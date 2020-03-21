@@ -5,6 +5,7 @@ namespace Swd\Bundle\ShardBundle\Command;
 
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Migrations\Configuration\Configuration;
 use Psr\Container\ContainerInterface;
 use Swd\Bundle\ShardBundle\ConnectionRegistry;
 use Swd\Bundle\ShardBundle\ShardIdsSourceInterface;
@@ -29,6 +30,11 @@ trait ShardCommandExecuteTrait
      * @var bool
      */
     protected $shardOptionRequired = false;
+
+    /**
+     * @var Configuration
+     */
+    protected $currentMigrationConfiguration;
 
     /**
      * @param InputInterface $input
@@ -155,7 +161,17 @@ trait ShardCommandExecuteTrait
             $output
         );
 
-        $this->setMigrationConfiguration($config);
+        $this->currentMigrationConfiguration = $config;
+
         parent::execute($input, $output);
     }
+
+    /**
+     * @inheritDoc
+     */
+    protected function getMigrationConfiguration(InputInterface $input, OutputInterface $output)
+    {
+        return $this->currentMigrationConfiguration;
+    }
+
 }

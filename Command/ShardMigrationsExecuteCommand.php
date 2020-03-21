@@ -4,7 +4,9 @@ namespace Swd\Bundle\ShardBundle\Command;
 
 use Doctrine\DBAL\Migrations\Tools\Console\Command\ExecuteCommand;
 use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class ShardMigrationsExecuteCommand extends ExecuteCommand
 {
@@ -28,6 +30,7 @@ class ShardMigrationsExecuteCommand extends ExecuteCommand
             ->addOption('shard', null, InputOption::VALUE_REQUIRED, 'The shard connection to use for this command.')
         ;
     }
+
 
 
 }
