@@ -5,12 +5,12 @@ namespace Swd\Bundle\ShardBundle\Command;
 
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Migrations\Configuration\Configuration;
 use Psr\Container\ContainerInterface;
 use Swd\Bundle\ShardBundle\ConnectionRegistry;
 use Swd\Bundle\ShardBundle\ShardIdsSourceInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Doctrine\Migrations\Configuration\Configuration;
 
 /**
  * Trait ShardCommandExecuteTrait
@@ -30,23 +30,61 @@ trait ShardCommandExecuteTrait
      * @var bool
      */
     protected $shardOptionRequired = false;
+    /** @var null|int  */
+    protected $currentShardId = null;
 
-    /**
-     * @var Configuration
-     */
-    protected $currentMigrationConfiguration;
-
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @throws \InvalidArgumentException
-     * @throws \LogicException
-     * @throws \RuntimeException
-     * @throws \Symfony\Component\Console\Exception\InvalidArgumentException
-     * @throws \Symfony\Component\Console\Exception\LogicException
-     */
-    public function execute(InputInterface $input, OutputInterface $output)
+    public function initialize(InputInterface $input, OutputInterface $output): void
     {
+        $type = $input->getArgument('type');
+
+        if ($this->registryLocator->has($type)) {
+            $registry = $this->registryLocator->get($type);
+            if (!$registry instanceof ConnectionRegistry) {
+                throw new \LogicException(
+                    'Invalid registry type. Registry must implement ' . ConnectionRegistry::class
+                );
+            }
+
+            $shardIds = (array)$input->getOption('shard');
+            if (empty($shardIds)) {
+                if ($this->shardOptionRequired || $registry instanceof ShardIdsSourceInterface) {
+                    $shardIds = $registry->getShardIds();
+                } else {
+                    throw new \InvalidArgumentException('Shard option required');
+                }
+            }
+            if(empty($shardIds)){
+                throw new \InvalidArgumentException('Shard option required, no shards found in registry');
+            }
+            $this->shardIds = $shardIds;
+        }
+    }
+
+    public function execute(InputInterface $input, OutputInterface $output): ?int
+    {
+        $res = 0;
+        if (is_null($this->shardIds)) {
+            parent::initialize($input, $output);
+            return parent::execute($input, $output);
+        } else {
+            foreach ($this->shardIds as $shardId) {
+                $this->currentShardId = $shardId;
+                $output->writeln(sprintf("\nProcessing shard %s", $shardId));
+
+                parent::initialize($input, $output);
+                $res |= parent::execute($input, $output);
+            }
+        }
+
+        return $res;
+    }
+
+    protected function getMigrationConfigurationOld(
+        InputInterface $input,
+        OutputInterface $output
+    ) : Configuration {
+
+        $container = $this->getApplication()->getKernel()->getContainer();
         $type = $input->getArgument('type');
         $settings = $this->getMigrationTypeSettings($type);
 
@@ -81,6 +119,32 @@ trait ShardCommandExecuteTrait
         }
     }
 
+    protected function getMigrationConfiguration(
+        InputInterface $input,
+        OutputInterface $output
+    ) : Configuration {
+
+        $container = $this->getApplication()->getKernel()->getContainer();
+        $type = $input->getArgument('type');
+        $settings = MigrationHelper::getMigrationTypeSettings($type,$container);
+
+        $connName = $this->currentShardId;
+        $conn = MigrationHelper::getConnection($type,$container,$connName);
+        $config = MigrationHelper::makeConfiguration(
+            $type,
+            $settings,
+            $conn,
+            $output
+        );
+
+        $config->getOutputWriter()->setCallback(
+            static function (string $message) use ($output) : void {
+                $output->writeln($message);
+            }
+        );
+
+        return $config;
+    }
     /**
      * @param ContainerInterface $connectionRegistryLocator
      */
@@ -161,17 +225,12 @@ trait ShardCommandExecuteTrait
             $output
         );
 
-        $this->currentMigrationConfiguration = $config;
+        $config->getOutputWriter()->setCallback(
+            static function (string $message) use ($output) : void {
+                $output->writeln($message);
+            }
+        );
 
-        parent::execute($input, $output);
+        return $config;
     }
-
-    /**
-     * @inheritDoc
-     */
-    protected function getMigrationConfiguration(InputInterface $input, OutputInterface $output)
-    {
-        return $this->currentMigrationConfiguration;
-    }
-
 }
