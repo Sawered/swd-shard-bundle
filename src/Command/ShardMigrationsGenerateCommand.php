@@ -8,12 +8,19 @@ class ShardMigrationsGenerateCommand extends GenerateCommand
 {
     use ShardCommandExecuteTrait;
 
+    protected static $defaultName ='shard:migrations:generate';
+
+    public function __construct()
+    {
+        parent::__construct(null);
+        $this->shardOptionRequired = true;
+    }
+
     protected function configure(): void
     {
         parent::configure();
 
         $this
-            ->setName('shard:migrations:generate')
             ->addArgument('type',InputArgument::REQUIRED,'set type of configured migration')
             ->addOption('shard', null, InputOption::VALUE_REQUIRED, 'The shard connection to use for this command.')
         ;
