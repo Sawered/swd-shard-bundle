@@ -15,7 +15,6 @@ class ShardMigrationsStatusCommand extends StatusCommand
     use ShardCommandExecuteTrait;
 
     protected static $defaultName = 'shard:migrations:status';
-    protected $shardIds = null;
 
     public function __construct()
     {

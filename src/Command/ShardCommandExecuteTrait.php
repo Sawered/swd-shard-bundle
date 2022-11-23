@@ -30,6 +30,12 @@ trait ShardCommandExecuteTrait
      * @var bool
      */
     protected $shardOptionRequired = false;
+
+    /**
+     * @var null|int[]
+     */
+    protected $shardIds = null;
+
     /** @var null|int  */
     protected $currentShardId = null;
 
