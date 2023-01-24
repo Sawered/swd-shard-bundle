@@ -7,7 +7,9 @@ namespace Swd\Bundle\ShardBundle\Command;
 use Doctrine\DBAL\Connection;
 use Psr\Container\ContainerInterface;
 use Swd\Bundle\ShardBundle\ConnectionRegistry;
+use Swd\Bundle\ShardBundle\ShardIdsResolverInterface;
 use Swd\Bundle\ShardBundle\ShardIdsSourceInterface;
+use Symfony\Component\Console\Exception\InvalidArgumentException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Doctrine\Migrations\Configuration\Configuration;
@@ -20,11 +22,16 @@ trait ShardCommandExecuteTrait
 {
     protected $migrationsConfig = [];
 
-    /** @var ContainerInterface */
-    protected $registryLocator;
+    /** @var ContainerInterface|null */
+    protected $registryLocator = null;
 
-    /** @var ContainerInterface */
-    protected $connectionLocator;
+    /** @var ContainerInterface|null */
+    protected $connectionLocator = null;
+
+    /**
+     * @var ContainerInterface|null
+     */
+    protected $shardIdRegistryLocator = null;
 
     /**
      * @var bool
@@ -36,31 +43,25 @@ trait ShardCommandExecuteTrait
      */
     protected $shardIds = null;
 
-    /** @var null|int  */
+    /** @var null|int */
     protected $currentShardId = null;
 
     public function initialize(InputInterface $input, OutputInterface $output): void
     {
-        $type = $input->getArgument('type');
+        $type = (string)$input->getArgument('type');
+
+        if (is_null($this->registryLocator)) {
+            throw new \LogicException(
+                'registry locator is not configured'
+            );
+        }
 
         if ($this->registryLocator->has($type)) {
-            $registry = $this->registryLocator->get($type);
-            if (!$registry instanceof ConnectionRegistry) {
-                throw new \LogicException(
-                    'Invalid registry type. Registry must implement ' . ConnectionRegistry::class
-                );
-            }
+            $registry = $this->getConnectionRegistry($type);
+            $shardIds = $this->getShardIdsFromInput($type, $input, $registry);
 
-            $shardIds = (array)$input->getOption('shard');
             if (empty($shardIds)) {
-                if ($this->shardOptionRequired || $registry instanceof ShardIdsSourceInterface) {
-                    $shardIds = $registry->getShardIds();
-                } else {
-                    throw new \InvalidArgumentException('Shard option required');
-                }
-            }
-            if(empty($shardIds)){
-                throw new \InvalidArgumentException('Shard option required, no shards found in registry');
+                throw new InvalidArgumentException('Shard option required, no shards found in registry');
             }
             $this->shardIds = $shardIds;
         }
@@ -85,78 +86,20 @@ trait ShardCommandExecuteTrait
         return $res;
     }
 
-    protected function getMigrationConfigurationOld(
-        InputInterface $input,
-        OutputInterface $output
-    ) : Configuration {
-
-        $container = $this->getApplication()->getKernel()->getContainer();
-        $type = $input->getArgument('type');
-        $settings = $this->getMigrationTypeSettings($type);
-
-        $connections = null;
-        if ($this->registryLocator->has($type)) {
-
-            $registry = $this->registryLocator->get($type);
-            if (!$registry instanceof ConnectionRegistry) {
-                throw new \LogicException('Invalid registry type. Registry must implement ' . ConnectionRegistry::class);
-            }
-
-            $shardIds = (array)$input->getOption('shard');
-            if (empty($shardIds)) {
-                if ($this->shardOptionRequired || $registry instanceof ShardIdsSourceInterface) {
-                    $shardIds = $registry->getShardIds();
-                } else {
-                    throw new \InvalidArgumentException('Shard option required');
-                }
-            }
-
-            foreach ($shardIds as $shardId) {
-                $output->writeln(sprintf("\nProcessing shard %s", $shardId));
-                $conn = $registry->createConnection($shardId);
-                $this->processConnection($conn, $input, $output, $type, $settings);
-            }
-
-        } else {
-
-            $conn = $this->getConnection($type);
-
-            $this->processConnection($conn, $input, $output, $type, $settings);
-        }
-    }
-
-    protected function getMigrationConfiguration(
-        InputInterface $input,
-        OutputInterface $output
-    ) : Configuration {
-
-        $container = $this->getApplication()->getKernel()->getContainer();
-        $type = $input->getArgument('type');
-        $settings = MigrationHelper::getMigrationTypeSettings($type,$container);
-
-        $connName = $this->currentShardId;
-        $conn = MigrationHelper::getConnection($type,$container,$connName);
-        $config = MigrationHelper::makeConfiguration(
-            $type,
-            $settings,
-            $conn,
-            $output
-        );
-
-        $config->getOutputWriter()->setCallback(
-            static function (string $message) use ($output) : void {
-                $output->writeln($message);
-            }
-        );
-
-        return $config;
-    }
     /**
      * @param ContainerInterface $connectionRegistryLocator
      */
-    public function setRegistryLocator(ContainerInterface $connectionRegistryLocator)
+    public function setRegistryLocator(ContainerInterface $connectionRegistryLocator): void
     {
         $this->registryLocator = $connectionRegistryLocator;
+    }
+
+    /**
+     * @param ContainerInterface $shardIdResolversLocator
+     */
+    public function setShardResolverLocator(ContainerInterface $shardIdResolversLocator): void
+    {
+        $this->shardIdRegistryLocator = $shardIdResolversLocator;
     }
 
     /**
@@ -198,6 +141,11 @@ trait ShardCommandExecuteTrait
             return $connection;
         }
 
+        if ($this->currentShardId) {
+            $registry = $this->getConnectionRegistry($type);
+            return $registry->createConnection($this->currentShardId);
+        }
+
         throw new \RuntimeException(sprintf('Cannot find connection for migration type: %s', $type));
     }
 
@@ -209,34 +157,87 @@ trait ShardCommandExecuteTrait
         $this->connectionLocator = $connectionLocator;
     }
 
-    /**
-     * @param $conn
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @param $type
-     * @param array $settings
-     * @throws \Symfony\Component\Console\Exception\LogicException
-     */
-    protected function processConnection(
-        Connection $conn,
+    protected function getMigrationConfiguration(
         InputInterface $input,
-        OutputInterface $output,
-        string $type,
-        array $settings
-    ) {
+        OutputInterface $output
+    ): Configuration {
+        $type = $input->getArgument('type');
+        $settings = $this->getMigrationTypeSettings($type);
+
+
+        $conn = $this->getConnection($type);
         $config = MigrationHelper::makeConfiguration(
-            $type,
             $settings,
-            $conn,
-            $output
+            $conn
         );
 
         $config->getOutputWriter()->setCallback(
-            static function (string $message) use ($output) : void {
+            static function (string $message) use ($output): void {
                 $output->writeln($message);
             }
         );
 
         return $config;
+    }
+
+    protected function getConnectionRegistry(string $type): ConnectionRegistry
+    {
+        $registry = $this->registryLocator->get($type);
+        if (!$registry instanceof ConnectionRegistry) {
+            throw new \LogicException('Invalid registry type. Registry must implement ' . ConnectionRegistry::class);
+        }
+
+        return $registry;
+    }
+
+    /**
+     * @param string $connectionType
+     * @param InputInterface $input
+     * @param ConnectionRegistry $registry
+     * @return int[]
+     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
+     * @throws \LogicException
+     */
+    protected function getShardIdsFromInput(
+        string $connectionType,
+        InputInterface $input,
+        ConnectionRegistry $registry
+    ): array {
+        $shardIds = (array)$input->getOption('shard');
+
+        if ($resolver = $this->getShardIdResolver($connectionType)) {
+            foreach ($shardIds as &$shardDefinition) {
+                $shardDefinition = $resolver->resolveShardIds($shardDefinition);
+            }
+            $shardIds = array_reduce($shardIds, 'array_merge', []);
+            $shardIds = array_unique($shardIds, SORT_NUMERIC);
+        }
+
+        if (empty($shardIds)) {
+            if ($this->shardOptionRequired || $registry instanceof ShardIdsSourceInterface) {
+                $shardIds = $registry->getShardIds();
+            } else {
+                throw new InvalidArgumentException('Shard option required');
+            }
+        }
+
+
+        return $shardIds;
+    }
+
+    protected function getShardIdResolver(string $connectionType): ?ShardIdsResolverInterface
+    {
+        $resolver = null;
+        if (is_null($this->shardIdRegistryLocator)) {
+            throw new \LogicException(
+                'shardIds resolver locator is not configured'
+            );
+        }
+
+        if ($this->shardIdRegistryLocator->has($connectionType)) {
+            $resolver = $this->shardIdRegistryLocator->get($connectionType);
+        }
+        return $resolver;
     }
 }

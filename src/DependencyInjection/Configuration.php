@@ -51,6 +51,7 @@ class Configuration implements ConfigurationInterface
             ->scalarNode('namespace')->defaultValue('Application\\Migrations')->end()
             ->scalarNode('directory')->defaultValue('%kernel.root_dir%/DoctrineMigrations')->end()
             ->scalarNode('connection_registry')->defaultNull()->end()
+            ->scalarNode('shard_resolver')->defaultNull()->end()
         ->end();
 
 
